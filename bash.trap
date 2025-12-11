@@ -1,45 +1,46 @@
-trap_debug(){
-if [ "$BASH_COMMAND" != "prompt_command_function" ]; then  
-  local CMD=${BASH_COMMAND}
-  CMD=${CMD/--color=auto//}
-  set -- $BASH_COMMAND
-  local l_sudo=""
-  local cmd=$1
-  shift
-  if [ "$cmd" = "sudo" ]; then
-    l_sudo=sudo    
-    cmd=$1
-    shift
-  fi
-  strip_cmd=$(basename $cmd)
-  if [ $# != 0 ]; then
-    mkdir -p ~/.hist
-    echo $l_sudo $cmd $* >> ~/.hist/$strip_cmd
-  fi
-fi
+init(){
+  trap 'trap_log_every_command' DEBUG
+  bind -x '"\C-f":select_from_cmd_history'
 }
-
-
-trap 'trap_debug' DEBUG
+trap_log_every_command(){
+  if [ "$BASH_COMMAND" != "prompt_command_function" ]; then  
+    local CMD=${BASH_COMMAND}
+    CMD=${CMD/--color=auto//}
+    set -- $BASH_COMMAND
+    local l_sudo=""
+    local cmd=$1
+    shift
+    if [ "$cmd" = "sudo" ]; then
+      l_sudo=sudo    
+      cmd=$1
+      shift
+    fi
+    strip_cmd=$(basename $cmd)
+    if [ $# != 0 ]; then
+      mkdir -p ~/.hist
+      echo $l_sudo $cmd $* >> ~/.hist/$strip_cmd
+    fi
+  fi
+}
 
 select_from_cmd_history(){
-local RL=$READLINE_LINE
-set -- $RL
-local cmd=$1
-shift
-local lst=/tmp/dialog_list_file_$USER
-local sel=~/.hist/${cmd}.sel
+  local RL=$READLINE_LINE
+  set -- $RL
+  local cmd=$1
+  shift
+  local lst=/tmp/dialog_list_file_$USER
+  local sel=~/.hist/${cmd}.sel
 
-sudo rm -f $lst
-touch $sel
-cat ~/.hist/$cmd | tac | awk '!x[$0]++' | tac > $lst
-cp $lst ~/.hist/$cmd
+  sudo rm -f $lst
+  touch $sel
+  cat ~/.hist/$cmd | tac | awk '!x[$0]++' | tac > $lst
+  cp $lst ~/.hist/$cmd
 
-/home/d/rust_menu/target/debug/rust_menu -r -i $lst -o $sel
+  /usr/bin/rust_menu -r -i $lst -o $sel
 
-newcmd=$(cat $sel)
-READLINE_LINE="$newcmd"
-READLINE_POINT=${#READLINE_LINE}
+  newcmd=$(cat $sel)
+  READLINE_LINE="$newcmd"
+  READLINE_POINT=${#READLINE_LINE}
 }
 
-bind -x '"\C-f":select_from_cmd_history'
+init
