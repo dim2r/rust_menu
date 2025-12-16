@@ -1,6 +1,6 @@
 init(){
   trap 'trap_log_every_command' DEBUG
-  bind -x '"\C-f":select_from_cmd_history'
+  bind -x '"\C-f":select_from_cmd_history'  
 }
 trap_log_every_command(){
   if [ "$BASH_COMMAND" != "prompt_command_function" ]; then  
@@ -26,8 +26,13 @@ trap_log_every_command(){
 select_from_cmd_history(){
   local RL=$READLINE_LINE
   set -- $RL
-  local cmd=$1
+  local cmd=$(basename $1)
+  if [ "$cmd" = "sudo" ]; then
+    shift
+    cmd=$(basename $1)
+  fi
   shift
+
   local lst=/tmp/dialog_list_file_$USER
   local sel=~/.hist/${cmd}.sel
 
