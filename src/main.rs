@@ -113,7 +113,7 @@ fn main() -> io::Result<()> {
 
     let page_size = 10;
     let save_file = &args.output_file;
-    let mut downcnt=0;
+    let mut downcnt;
     // ---- Selection ----
     let mut selected = 0;
     let mut page_start = 0;
