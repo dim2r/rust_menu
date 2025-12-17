@@ -9,6 +9,7 @@ use crossterm::{
     terminal,
     cursor::MoveUp,
     cursor::MoveDown,
+    style::Color, style::SetForegroundColor,style::SetBackgroundColor,
     event::{read, Event, KeyCode, KeyModifiers},
 };
 
@@ -69,17 +70,28 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
 
     execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
     
-    println!("\r↑↓/←→ навигация — Space/→ выбор — q выход — Ctrl-C выход\n");
+    println!("\r↑↓/←→ навигация; Space/→> выбор;\n");
     upcnt+=1;
 
     let end = usize::min(page_start + page_size, items.len());
-
+    let mut downcnt:u16=0;
     for (i, item) in items[page_start..end].iter().enumerate() {
         let idx = i + page_start;
         if idx == selected {
-            println!("\r> {}", item);
+	execute!(
+    	    stdout(),
+    	    SetBackgroundColor(Color::DarkBlue)
+	    ).unwrap();
+
+            println!("\r>>> {}", item);
+	execute!(
+    	    stdout(),
+    	    SetBackgroundColor(Color::Reset)
+	    ).unwrap();
+
+	    downcnt = i as u16;
         } else {
-            println!("\r  {}", item);
+            println!("\r    {}", item);
         }
 	upcnt+=1;
 
@@ -90,10 +102,12 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     	    page_start / page_size + 1,
             (items.len() + page_size - 1) / page_size
 	);
-	upcnt+=1;
+	upcnt+=2;
    }
+    downcnt+=2;
+    print!("\r"); 
     execute!(stdout(), MoveUp(1+upcnt)).unwrap();
-
+    
     upcnt
 }
 
