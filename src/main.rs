@@ -7,6 +7,8 @@ use std::path::Path;
 use crossterm::{
     execute,
     terminal,
+    cursor::MoveUp,
+    cursor::MoveDown,
     event::{read, Event, KeyCode, KeyModifiers},
 };
 
@@ -62,10 +64,13 @@ fn restore_selected(path: &str, items: &[String]) -> Option<usize> {
     items.iter().position(|item| item == value)
 }
 
-fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: usize) {
-    execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: usize) -> u16 {
+    let mut upcnt = 0;
 
+    execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+    
     println!("\r↑↓/←→ навигация — Space/→ выбор — q выход — Ctrl-C выход\n");
+    upcnt+=1;
 
     let end = usize::min(page_start + page_size, items.len());
 
@@ -76,17 +81,24 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
         } else {
             println!("\r  {}", item);
         }
+	upcnt+=1;
+
     }
     if (items.len() + page_size - 1) / page_size >1 {
-    println!(
-        "\n\rСтраница {}/{}",
-        page_start / page_size + 1,
-        (items.len() + page_size - 1) / page_size
-    );
+        println!(
+	    "\n\rСтраница {}/{}",
+    	    page_start / page_size + 1,
+            (items.len() + page_size - 1) / page_size
+	);
+	upcnt+=1;
    }
+    execute!(stdout(), MoveUp(1+upcnt)).unwrap();
+
+    upcnt
 }
 
 fn main() -> io::Result<()> {
+
     // ---- Args ----
     let args = Args::parse();
     // ---- Load items ----
@@ -101,7 +113,7 @@ fn main() -> io::Result<()> {
 
     let page_size = 10;
     let save_file = &args.output_file;
-
+    let mut downcnt=0;
     // ---- Selection ----
     let mut selected = 0;
     let mut page_start = 0;
@@ -116,8 +128,7 @@ fn main() -> io::Result<()> {
 
     // ---- Main loop ----
     loop {
-        draw_menu(&items, selected, page_start, page_size);
-
+        downcnt = draw_menu(&items, selected, page_start, page_size);
         match read()? {
             Event::Key(event) => match (event.code, event.modifiers) {
                 // Навигация
@@ -172,7 +183,7 @@ fn main() -> io::Result<()> {
             _ => {}
         }
     }
-
+    execute!(stdout(), MoveDown(downcnt+1)).unwrap();
     terminal::disable_raw_mode()?;
     Ok(())
 }
