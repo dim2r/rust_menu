@@ -83,12 +83,12 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     	    SetBackgroundColor(Color::DarkBlue)
 	    ).unwrap();
 
-            println!("\r>>> {}", item);
+            print!("\r>>> {}", item);
 	execute!(
     	    stdout(),
     	    SetBackgroundColor(Color::Reset)
 	    ).unwrap();
-
+	    println!("");
 	    downcnt = i as u16;
         } else {
             println!("\r    {}", item);
