@@ -22,7 +22,8 @@ struct Args {
     output_file: String,
     #[arg(short = 'r', long = "reverse")]
     reverse: bool,
-
+    #[arg(short = 'p', long = "page_size", default_value_t = 10)]
+    page_size: usize,
 }
 
 
@@ -70,9 +71,12 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
 
     let end = usize::min(page_start + page_size, items.len());
     let mut downcnt:u16=0;
+    let mut print_cnt=0;
     for (i, item) in items[page_start..end].iter().enumerate() {
         let idx = i + page_start;
+        print_cnt+=1;
         if idx == selected {
+
             execute!(
                     stdout(),
                     SetBackgroundColor(Color::DarkBlue)
@@ -84,14 +88,28 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
                     stdout(),
                     SetBackgroundColor(Color::Reset)
                 ).unwrap();
-	    println!("");
-	    downcnt = i as u16;
+
+            println!("");
+
+	        downcnt = i as u16;
+
         } else {
+
             println!("\r    {}", item);
+
         }
-	upcnt+=1;
+	    upcnt+=1;
 
     }
+    if print_cnt<page_size {
+        let dif=page_size-print_cnt;
+        for n in 1..=dif {
+            println!("");
+        }
+    }
+
+
+
     if (items.len() + page_size - 1) / page_size >1 {
         println!(
 	    "\n\rСтраница {}/{}",
@@ -123,13 +141,16 @@ fn main() -> io::Result<()> {
     let mut items = load_lines(&args.input_file)?;
     if args.reverse {
       items.reverse();
-    }   
+    }
+
+
     if items.is_empty() {
         println!("Файл пустой.");
         return Ok(());
     }
 
-    let page_size = 10;
+
+    let page_size = args.page_size;
     let save_file = &args.output_file;
     let mut downcnt;
     // ---- Selection ----
