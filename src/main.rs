@@ -77,18 +77,9 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
         print_cnt+=1;
         if idx == selected {
 
-            execute!(
-                    stdout(),
-                    SetBackgroundColor(Color::DarkBlue)
-                ).unwrap();
-
+            execute!(stdout(),SetBackgroundColor(Color::DarkBlue)).unwrap();
             print!("\r>>> {}", item);
-
-            execute!(
-                    stdout(),
-                    SetBackgroundColor(Color::Reset)
-                ).unwrap();
-
+            execute!(stdout(),SetBackgroundColor(Color::Reset)).unwrap();
             println!("");
 
 	        downcnt = i as u16;
