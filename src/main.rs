@@ -181,8 +181,6 @@ fn main() -> io::Result<()> {
                     }
                 }
                 (KeyCode::PageUp, _) => {
-                    //println!("\n\n!!!!!!!!!!!!!!!selected={} page_size={}!!!!!!!!!!!!!!!!!!!\n\n",selected,page_size);
-
                     let new_selected:i32 = (selected as i32) - (page_size as i32);
                     if new_selected >0{
                         selected -=  page_size;
@@ -193,8 +191,6 @@ fn main() -> io::Result<()> {
                     }
                 }
                 (KeyCode::PageDown, _) => {
-                    //println!("\n\n!!!!!!!!!!!!!!!selected={} page_size={}!!!!!!!!!!!!!!!!!!!\n\n",selected,page_size);
-
                     let new_selected:i32 = (selected as i32)+ (page_size as i32);
                     let max_:i32= (items.len()as i32)-1;
                     if new_selected < max_ && max_>0
@@ -205,13 +201,8 @@ fn main() -> io::Result<()> {
                         selected =  max_ as usize;
                         let npages = (selected/page_size) as usize;
                         page_start = page_size * npages;
-                        // if max_ - page_size as i32 >= 0 {
-                        //     page_start = page_start
-                        // }
                     }
                 }
-
-
                 (KeyCode::Left, _) => {
                     if selected > 0 {
                         selected -= 1;
