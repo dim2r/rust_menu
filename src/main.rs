@@ -7,24 +7,19 @@ use std::path::Path;
 use crossterm::{
     execute,
     terminal,
-    cursor::MoveUp,
-    cursor::MoveDown,
+    cursor::{MoveUp, MoveDown, SavePosition, RestorePosition},
     style::Color, style::SetForegroundColor,style::SetBackgroundColor,
     event::{read, Event, KeyCode, KeyModifiers},
 };
 
-
+/// CLI options -i -o -r
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
-    /// Input filename
     #[arg(short = 'i', long = "input")]
     input_file: String,
-
-    /// Output filename
     #[arg(short = 'o', long = "output")]
     output_file: String,
-
     #[arg(short = 'r', long = "reverse")]
     reverse: bool,
 
@@ -78,16 +73,17 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     for (i, item) in items[page_start..end].iter().enumerate() {
         let idx = i + page_start;
         if idx == selected {
-	execute!(
-    	    stdout(),
-    	    SetBackgroundColor(Color::DarkBlue)
-	    ).unwrap();
+            execute!(
+                    stdout(),
+                    SetBackgroundColor(Color::DarkBlue)
+                ).unwrap();
 
             print!("\r>>> {}", item);
-	execute!(
-    	    stdout(),
-    	    SetBackgroundColor(Color::Reset)
-	    ).unwrap();
+
+            execute!(
+                    stdout(),
+                    SetBackgroundColor(Color::Reset)
+                ).unwrap();
 	    println!("");
 	    downcnt = i as u16;
         } else {
@@ -109,6 +105,14 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     execute!(stdout(), MoveUp(1+upcnt)).unwrap();
     
     upcnt
+}
+
+fn save_cursor() {
+    print!("\x1b[s");
+}
+
+fn restore_cursor() {
+    print!("\x1b[u");
 }
 
 fn main() -> io::Result<()> {
@@ -139,9 +143,10 @@ fn main() -> io::Result<()> {
     }
 
     terminal::enable_raw_mode()?;
-
+    save_cursor();
     // ---- Main loop ----
     loop {
+        restore_cursor();
         downcnt = draw_menu(&items, selected, page_start, page_size);
         match read()? {
             Event::Key(event) => match (event.code, event.modifiers) {
