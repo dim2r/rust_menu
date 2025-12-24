@@ -105,6 +105,7 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
         let dif=page_size-print_cnt;
         for n in 1..=dif {
             println!("");
+            upcnt+=1;
         }
     }
 
@@ -213,10 +214,10 @@ fn main() -> io::Result<()> {
                 }
 
                 // Выход через q
-                (KeyCode::Char('q'), _) => {
-                    println!("\nВыход без выбора.");
-                    break;
-                }
+                // (KeyCode::Char('q'), _) => {
+                //     println!("\nВыход без выбора.");
+                //     break;
+                // }
 
                 _ => {}
             },
