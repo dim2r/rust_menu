@@ -22,6 +22,8 @@ struct Args {
     output_file: String,
     #[arg(short = 'r', long = "reverse")]
     reverse: bool,
+    #[arg(short = 'v', long = "view", default_value_t = String::from("all"))]
+    view: String,
     #[arg(short = 'p', long = "page_size", default_value_t = 10)]
     page_size: usize,
 }
@@ -61,13 +63,15 @@ fn restore_selected(path: &str, items: &[String]) -> Option<usize> {
     items.iter().position(|item| item == value)
 }
 
-fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: usize) -> u16 {
+fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: usize, view:String) -> u16 {
     let mut upcnt = 0;
 
     execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-    
-    println!("\r↑↓/←→ навигация; Space/→> выбор;\n");
-    upcnt+=1;
+
+    if view=="all" {
+        println!("\r↑↓/←→ навигация; Space/→> выбор;\n");
+        upcnt += 1;
+    }
 
     let end = usize::min(page_start + page_size, items.len());
     let mut downcnt:u16=0;
@@ -103,26 +107,31 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
 
 
     if (items.len() + page_size - 1) / page_size >1 {
-        println!(
-	    "\n\rСтраница {}/{}",
-    	    page_start / page_size + 1,
-            (items.len() + page_size - 1) / page_size
-	);
-	upcnt+=2;
+        if view=="all" {
+            println!(
+                "\n\rСтраница {}/{}",
+                page_start / page_size + 1,
+                (items.len() + page_size - 1) / page_size
+            );
+            upcnt+=2;
+        }
    }
     downcnt+=2;
-    print!("\r"); 
+    print!("\r");
     execute!(stdout(), MoveUp(1+upcnt)).unwrap();
-    
+
     upcnt
 }
 
 fn save_cursor() {
-    print!("\x1b[s");
+    execute!(stdout(), SavePosition).unwrap();
+    //print!("\x1b[s");
+
 }
 
 fn restore_cursor() {
-    print!("\x1b[u");
+    execute!(stdout(), RestorePosition).unwrap();
+    //print!("\x1b[u");
 }
 
 fn main() -> io::Result<()> {
@@ -144,6 +153,7 @@ fn main() -> io::Result<()> {
 
     let page_size = args.page_size;
     let save_file = &args.output_file;
+    let view = args.view;
     let mut downcnt;
     // ---- Selection ----
     let mut selected = 0;
@@ -160,7 +170,7 @@ fn main() -> io::Result<()> {
     // ---- Main loop ----
     loop {
         restore_cursor();
-        downcnt = draw_menu(&items, selected, page_start, page_size);
+        downcnt = draw_menu(&items, selected, page_start, page_size, view.clone());
         match read()? {
             Event::Key(event) => match (event.code, event.modifiers) {
                 // Навигация
