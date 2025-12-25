@@ -2,8 +2,6 @@ use clap::Parser;
 use std::fs::{self, File};
 use std::io::{self, BufRead, stdout};
 use std::path::Path;
-//use std::env;
-
 use crossterm::{
     execute,
     terminal,
@@ -69,7 +67,7 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
 
     if view=="all" {
-        println!("\r↑↓/←→ навигация; Space/→> выбор;\n");
+        println!("\rNavigate: ↑ ↓ pageUp pageDown; Choose: space →> \n");
         upcnt += 1;
     }
 
@@ -109,7 +107,7 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     if (items.len() + page_size - 1) / page_size >1 {
         if view=="all" {
             println!(
-                "\n\rСтраница {}/{}",
+                "\n\rpage {}/{}",
                 page_start / page_size + 1,
                 (items.len() + page_size - 1) / page_size
             );
@@ -146,7 +144,7 @@ fn main() -> io::Result<()> {
 
 
     if items.is_empty() {
-        println!("Файл пустой.");
+        println!("Input file is empty");
         return Ok(());
     }
 
@@ -224,16 +222,18 @@ fn main() -> io::Result<()> {
 
                 // Выбор: Space или →
                 (KeyCode::Enter, _) | (KeyCode::Right, _) | (KeyCode::Char(' '), _) => {
-                    //println!("\n\rВы выбрали: {}\r", items[selected]);
                     if let Err(e) = save_selected(save_file, &items[selected]) {
-                        println!("Не удалось сохранить выбор: {}", e);
+                        println!("Could not save selected string into the file: {}", e);
                     }
                     break;
                 }
 
                 // Ctrl-C
                 (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                    println!("\nВыход по Ctrl-C.");
+                    println!("\nCtrl-C");
+                    // if let Err(e) = save_selected(save_file, "Ctrl-C") {
+                    //     println!("Could not save string into the file: {}", e);
+                    // }
                     break;
                 }
 
