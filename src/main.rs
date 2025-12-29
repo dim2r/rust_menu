@@ -10,7 +10,7 @@ use crossterm::{
     event::{read, Event, KeyCode, KeyModifiers},
 };
 
-/// CLI options -i -o -r
+/// CLI options -i -o -n -r -p -v
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
@@ -18,6 +18,8 @@ struct Args {
     input_file: String,
     #[arg(short = 'o', long = "output")]
     output_file: String,
+    #[arg(short = 'n', long = "output_number", default_value_t = String::from(""))]
+    output_number_file: String,
     #[arg(short = 'r', long = "reverse")]
     reverse: bool,
     #[arg(short = 'v', long = "view", default_value_t = String::from("all"))]
@@ -25,9 +27,6 @@ struct Args {
     #[arg(short = 'p', long = "page_size", default_value_t = 10)]
     page_size: usize,
 }
-
-
-
 
 fn load_lines(path: &str) -> io::Result<Vec<String>> {
     let file = File::open(path)?;
@@ -46,7 +45,11 @@ fn load_lines(path: &str) -> io::Result<Vec<String>> {
 }
 
 fn save_selected(path: &str, value: &str) -> io::Result<()> {
-    fs::write(path, value.trim_end())?;
+    if path=="-"{
+        println!("{}",value.trim_end());
+    }else{
+        fs::write(path, value.trim_end())?;
+    }
     Ok(())
 }
 
@@ -94,6 +97,7 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
 	    upcnt+=1;
 
     }
+    
     if print_cnt<page_size {
         let dif=page_size-print_cnt;
         for n in 1..=dif {
@@ -101,8 +105,6 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
             upcnt+=1;
         }
     }
-
-
 
     if (items.len() + page_size - 1) / page_size >1 {
         if view=="all" {
@@ -123,20 +125,16 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
 
 fn save_cursor() {
     execute!(stdout(), SavePosition).unwrap();
-    //print!("\x1b[s");
-
 }
 
 fn restore_cursor() {
     execute!(stdout(), RestorePosition).unwrap();
-    //print!("\x1b[u");
 }
 
 fn main() -> io::Result<()> {
 
-    // ---- Args ----
     let args = Args::parse();
-    // ---- Load items ----
+
     let mut items = load_lines(&args.input_file)?;
     if args.reverse {
       items.reverse();
@@ -150,22 +148,19 @@ fn main() -> io::Result<()> {
 
 
     let page_size = args.page_size;
-    let save_file = &args.output_file;
     let view = args.view;
     let mut downcnt;
-    // ---- Selection ----
     let mut selected = 0;
     let mut page_start = 0;
 
-    // Restore previous selection (if exists)
-    if let Some(idx) = restore_selected(save_file, &items) {
+    if let Some(idx) = restore_selected(&args.output_file, &items) {
         selected = idx;
         page_start = (selected / page_size) * page_size;
     }
 
     terminal::enable_raw_mode()?;
     save_cursor();
-    // ---- Main loop ----
+    // ---- Main user iteraction loop ----
     loop {
         restore_cursor();
         downcnt = draw_menu(&items, selected, page_start, page_size, view.clone());
@@ -222,8 +217,15 @@ fn main() -> io::Result<()> {
 
                 // Выбор: Space или →
                 (KeyCode::Enter, _) | (KeyCode::Right, _) | (KeyCode::Char(' '), _) => {
-                    if let Err(e) = save_selected(save_file, &items[selected]) {
+                    if let Err(e) = save_selected(&args.output_file, &items[selected]) {
                         println!("Could not save selected string into the file: {}", e);
+                    }
+
+                    if args.output_number_file!="" {
+                        let human_idx=selected+1;
+                        if let Err(e) = save_selected(&args.output_number_file, &human_idx.to_string()) {
+                            println!("Could not save index into the file: {}", e);
+                        }
                     }
                     break;
                 }
