@@ -186,7 +186,7 @@ fn main() -> io::Result<()> {
                 (KeyCode::PageUp, _) => {
                     let new_selected:i32 = (selected as i32) - (page_size as i32);
                     if new_selected >0{
-                        selected -=  page_size;
+                        selected   -= page_size;
                         page_start -= page_size
                     } else {
                         selected = 0;
@@ -195,10 +195,10 @@ fn main() -> io::Result<()> {
                 }
                 (KeyCode::PageDown, _) => {
                     let new_selected:i32 = (selected as i32)+ (page_size as i32);
-                    let max_:i32= (items.len()as i32)-1;
+                    let max_:i32 = (items.len()as i32)-1;
                     if new_selected < max_ && max_>0
                     {
-                        selected +=  page_size;
+                        selected   += page_size;
                         page_start += page_size
                     } else {
                         selected =  max_ as usize;
@@ -222,7 +222,7 @@ fn main() -> io::Result<()> {
                     }
 
                     if args.output_number_file!="" {
-                        let human_idx=selected+1;
+                        let human_idx = selected + 1;
                         if let Err(e) = save_selected(&args.output_number_file, &human_idx.to_string()) {
                             println!("Could not save index into the file: {}", e);
                         }
