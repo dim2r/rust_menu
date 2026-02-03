@@ -1,14 +1,16 @@
 use clap::Parser;
 use std::fs::{self, File};
-use std::io::{self, BufRead, stdout};
+use std::io::{self, BufRead, stdout,Read, Write};
 use std::path::Path;
 use crossterm::{
     execute,
     terminal,
     cursor::{MoveUp, MoveDown, SavePosition, RestorePosition},
     style::Color, style::SetForegroundColor,style::SetBackgroundColor,
-    event::{read, Event, KeyCode, KeyModifiers},
+    event::{read, Event, KeyCode, KeyModifiers, MouseEvent,MouseEventKind, EnableMouseCapture, DisableMouseCapture},
 };
+use std::thread;
+use std::time::Duration;
 
 /// CLI options -i -o -n -r -p -v
 #[derive(Parser, Debug)]
@@ -22,10 +24,46 @@ struct Args {
     output_number_file: String,
     #[arg(short = 'r', long = "reverse")]
     reverse: bool,
+
+    #[arg(short = 'm', long = "mouse", default_value_t = false)]
+    use_mouse: bool,
+
     #[arg(short = 'v', long = "view", default_value_t = String::from("all"))]
     view: String,
     #[arg(short = 'p', long = "page_size", default_value_t = 10)]
     page_size: usize,
+}
+
+fn get_cursor_position() -> (u16, u16) {
+    let mut stdout = io::stdout();
+
+    // Request cursor position report (DSR)
+    stdout.write_all(b"\x1B[6n").unwrap();
+    stdout.flush().unwrap();
+
+    let mut buf = [0u8; 32];
+    let mut s = String::new();
+
+    // Read until we get the "R" terminator
+    loop {
+        let n = io::stdin().read(&mut buf).unwrap();
+        s.push_str(&String::from_utf8_lossy(&buf[..n]));
+
+        if s.contains('R') {
+            break;
+        }
+    }
+
+    // Expected: ESC [ row ; col R
+    let start = s.find('[').unwrap() + 1;
+    let end = s.find('R').unwrap();
+    let coords = &s[start..end];
+
+    let mut parts = coords.split(';');
+    let row: u16 = parts.next().unwrap().parse().unwrap();
+    let col: u16 = parts.next().unwrap().parse().unwrap();
+
+    ( col, row)
 }
 
 fn load_lines(path: &str) -> io::Result<Vec<String>> {
@@ -64,6 +102,8 @@ fn restore_selected(path: &str, items: &[String]) -> Option<usize> {
     items.iter().position(|item| item == value)
 }
 
+
+
 fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: usize, view:String) -> u16 {
     let mut upcnt = 0;
 
@@ -75,7 +115,7 @@ fn draw_menu(items: &[String], selected: usize, page_start: usize, page_size: us
     }
 
     let end = usize::min(page_start + page_size, items.len());
-    let mut downcnt:u16=0;
+    let mut downcnt:u16 = 0;
     let mut print_cnt=0;
     for (i, item) in items[page_start..end].iter().enumerate() {
         let idx = i + page_start;
@@ -127,6 +167,21 @@ fn save_cursor() {
     execute!(stdout(), SavePosition).unwrap();
 }
 
+
+fn init_terminal(mouse: bool){
+    terminal::enable_raw_mode().unwrap();
+    if mouse {
+        execute!(stdout(), EnableMouseCapture).unwrap();
+    }
+}
+
+fn restore_terminal(downcnt:u16,mouse: bool){
+    execute!(stdout(), MoveDown(downcnt+1)).unwrap();
+    if mouse {
+        execute!(stdout(), DisableMouseCapture).unwrap();
+    }
+    terminal::disable_raw_mode().unwrap();
+}
 fn restore_cursor() {
     execute!(stdout(), RestorePosition).unwrap();
 }
@@ -147,9 +202,11 @@ fn main() -> io::Result<()> {
     }
 
 
+    init_terminal(args.use_mouse);
+
     let page_size = args.page_size;
     let view = args.view;
-    let mut downcnt;
+    let mut downcnt = 0;
     let mut selected = 0;
     let mut page_start = 0;
 
@@ -158,13 +215,48 @@ fn main() -> io::Result<()> {
         page_start = (selected / page_size) * page_size;
     }
 
-    terminal::enable_raw_mode()?;
+
     save_cursor();
     // ---- Main user iteraction loop ----
+    let mut last_event_was_mouse:bool=false;
+    let mut startx =0;
+    let mut starty =0;
+
     loop {
         restore_cursor();
-        downcnt = draw_menu(&items, selected, page_start, page_size, view.clone());
+
+        if !last_event_was_mouse {
+            downcnt = draw_menu(&items, selected, page_start, page_size, view.clone());
+            (startx, starty) = get_cursor_position();
+        }
+        last_event_was_mouse = false;
         match read()? {
+            Event::Mouse(m) => {
+                if let MouseEventKind::Down(_) = m.kind {
+                    last_event_was_mouse = true;
+                    let x = m.column;
+                    let y = m.row;
+                    let sel= (y as i32 - starty as i32)-1;
+                    if sel>=0 && sel<items.len() as i32
+                    {
+                        selected = sel as usize;
+                        downcnt = draw_menu(&items, selected, page_start, page_size, view.clone());
+                        restore_terminal(downcnt,args.use_mouse);
+                        if let Err(e) = save_selected(&args.output_file, &items[selected]) {
+                            println!("Could not save selected string into the file: {}", e);
+                        }
+
+                        if args.output_number_file!="" {
+                            let human_idx = selected + 1;
+                            if let Err(e) = save_selected(&args.output_number_file, &human_idx.to_string()) {
+                                println!("Could not save index into the file: {}", e);
+                            }
+                        }
+                        //println!("[ Clicked  x={} y={}  startx={} starty={} sel={}  ]", x, y, startx, starty, &items[selected]);
+                        break;
+                    }
+                }
+            },
             Event::Key(event) => match (event.code, event.modifiers) {
                 // Навигация
                 (KeyCode::Up, _) => {
@@ -250,7 +342,6 @@ fn main() -> io::Result<()> {
             _ => {}
         }
     }
-    execute!(stdout(), MoveDown(downcnt+1)).unwrap();
-    terminal::disable_raw_mode()?;
+    restore_terminal(downcnt,args.use_mouse);
     Ok(())
 }
