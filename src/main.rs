@@ -60,10 +60,10 @@ fn get_cursor_position() -> (u16, u16) {
     let coords = &s[start..end];
 
     let mut parts = coords.split(';');
-    let row: u16 = parts.next().unwrap().parse().unwrap();
-    let col: u16 = parts.next().unwrap().parse().unwrap();
+    let row: u16 = parts.next().unwrap().parse().unwrap_or(0);
+    let col: u16 = parts.next().unwrap().parse().unwrap_or(0);
 
-    ( col, row)
+    (col, row)
 }
 
 fn load_lines(path: &str) -> io::Result<Vec<String>> {
